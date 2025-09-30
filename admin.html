@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Panel de Control - Entradas</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .login { text-align: center; padding: 40px; }
+        input[type="password"] { padding: 10px; margin: 10px; width: 200px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+        .btn-primary { background: #2196F3; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .reserva { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .pendiente { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .activa { background: #d4edda; border-left: 4px solid #28a745; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; padding: 20px; background: #e9ecef; border-radius: 5px; }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 2em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Pantalla de Login -->
+        <div id="loginScreen" class="login">
+            <h1>🔐 Panel de Control</h1>
+            <p>Introduce la contraseña de administrador:</p>
+            <input type="password" id="password" placeholder="Contraseña">
+            <button class="btn-primary" onclick="login()">Entrar</button>
+        </div>
+        
+        <!-- Panel Principal -->
+        <div id="adminPanel" style="display: none;">
+            <h1>🎵 Gestión de Entradas</h1>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalReservas">0</div>
+                    <div>Total Reservas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="pendientes">0</div>
+                    <div>Pendientes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="activas">0</div>
+                    <div>Activadas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="disponibles">100</div>
+                    <div>Disponibles</div>
+                </div>
+            </div>
+            
+            <div>
+                <button class="btn-primary" onclick="cargarReservas()">🔄 Actualizar</button>
+                <button class="btn-secondary" onclick="logout()">🚪 Salir</button>
+            </div>
+            
+            <h2>Reservas Pendientes de Pago</h2>
+            <div id="reservasPendientes"></div>
+            
+            <h2>Todas las Reservas</h2>
+            <div id="todasReservas"></div>
+        </div>
+    </div>
+
+    <script>
+        const CONTRASENA = "admin123"; // Cambia esta contraseña
+        
+        function login() {
+            const password = document.getElementById('password').value;
+            if (password === CONTRASENA) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                cargarReservas();
+            } else {
+                alert('Contraseña incorrecta');
+            }
+        }
+        
+        function logout() {
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('password').value = '';
+        }
+        
+        async function cargarReservas() {
+            try {
+                // En una versión más avanzada, aquí llamarías a una función que traiga todas las reservas
+                // Por ahora, mostramos un mensaje con instrucciones
+                
+                document.getElementById('reservasPendientes').innerHTML = `
+                    <div style="background: #e7f3ff; padding: 20px; border-radius: 5px;">
+                        <h3>📋 Para gestionar las reservas:</h3>
+                        <ol>
+                            <li>Ve a tu <a href="https://sheets.google.com" target="_blank">Google Sheets</a></li>
+                            <li>Abre la hoja "Entradas Concierto"</li>
+                            <li>Busca la reserva por el código que te enviaron por Bizum</li>
+                            <li>En la columna <strong>Estado</strong>, cambia "pending" por "active"</li>
+                            <li>¡La entrada se activará automáticamente!</li>
+                        </ol>
+                        <p><strong>URL de tu Google Sheets:</strong><br>
+                        <code>https://docs.google.com/spreadsheets/d/${getSpreadsheetId()}/edit</code></p>
+                    </div>
+                `;
+                
+                document.getElementById('todasReservas').innerHTML = `
+                    <p>Gestiona todas las reservas directamente desde Google Sheets.</p>
+                    <p><strong>Acciones rápidas:</strong></p>
+                    <ul>
+                        <li>Ver todas las reservas</li>
+                        <li>Filtrar por estado (pending/active)</li>
+                        <li>Exportar datos a Excel</li>
+                        <li>Buscar por código o email</li>
+                    </ul>
+                `;
+                
+            } catch (error) {
+                document.getElementById('reservasPendientes').innerHTML = '<p>Error cargando reservas</p>';
+            }
+        }
+        
+        function getSpreadsheetId() {
+            // Esto sería dinámico en una versión más avanzada
+            return '1bkBCHQ28rqGA0AFP5uA2WI7qbKT1uyJ1SpQ1UijkKkM';
+        }
+        
+        // Permitir login con Enter
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
