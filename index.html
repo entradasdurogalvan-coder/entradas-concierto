@@ -281,16 +281,20 @@
             document.getElementById('formError').style.display = 'none';
         }
 
-        // Función para enviar email de confirmación
+        // Función para enviar email de confirmación - CORREGIDA
         async function sendConfirmationEmail(formData, reservation) {
             try {
                 const templateParams = {
                     to_name: formData.name,
                     to_email: formData.email,
+                    name: formData.name,
                     reservation_id: reservation.id,
                     amount: reservation.amount + '€',
-                    bizum_number: CONFIG.BIZUM_NUMBER
+                    bizum_number: CONFIG.BIZUM_NUMBER,
+                    reply_to: formData.email
                 };
+
+                console.log('Enviando email con parámetros:', templateParams);
 
                 const result = await emailjs.send(
                     CONFIG.EMAILJS.SERVICE_ID,
@@ -302,20 +306,25 @@
                 return result;
             } catch (error) {
                 console.error('❌ Error enviando email de confirmación:', error);
+                console.log('Detalles del error:', error);
                 return null;
             }
         }
 
-        // Función para enviar email de entrada activa
+        // Función para enviar email de entrada activa - CORREGIDA
         async function sendTicketEmail(reservation) {
             try {
                 const templateParams = {
                     to_name: reservation.name,
                     to_email: reservation.email,
+                    name: reservation.name,
                     reservation_id: reservation.id,
                     ticket_type: reservation.ticketType.toUpperCase(),
-                    ticket_url: window.location.href
+                    ticket_url: window.location.href,
+                    reply_to: reservation.email
                 };
+
+                console.log('Enviando email de entrada activa con parámetros:', templateParams);
 
                 const result = await emailjs.send(
                     CONFIG.EMAILJS.SERVICE_ID,
@@ -327,6 +336,34 @@
                 return result;
             } catch (error) {
                 console.error('❌ Error enviando email de entrada activa:', error);
+                console.log('Detalles del error:', error);
+                return null;
+            }
+        }
+
+        // Función para probar EmailJS
+        async function testEmailJS() {
+            try {
+                const testParams = {
+                    to_name: "Test User",
+                    to_email: "test@email.com",
+                    name: "Test User",
+                    reservation_id: "TEST123",
+                    amount: "10€",
+                    bizum_number: CONFIG.BIZUM_NUMBER,
+                    reply_to: "test@email.com"
+                };
+                
+                const result = await emailjs.send(
+                    CONFIG.EMAILJS.SERVICE_ID,
+                    CONFIG.EMAILJS.TEMPLATE_CONFIRMATION,
+                    testParams
+                );
+                
+                console.log('✅ Test EmailJS exitoso:', result);
+                return result;
+            } catch (error) {
+                console.error('❌ Error en test EmailJS:', error);
                 return null;
             }
         }
@@ -422,6 +459,9 @@
             hideError();
             showStep(1);
         }
+
+        // Hacer la función testEmailJS global para poder probarla desde la consola
+        window.testEmailJS = testEmailJS;
     </script>
 </body>
 </html>
