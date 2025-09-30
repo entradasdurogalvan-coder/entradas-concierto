@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2BjUjTSQi5o0nk9bANXMKvkBjgiGJRCBFPjKAv_g0-IZSpYEzz-Wo00hdnyWcv_HA/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwVsEuzPq-efkDmmEWo9rUtrsGylUNzkETLlaczHw2O0LrflSQrGj8DF7rQrj5dUw1e/exec';
 
 exports.handler = async function(event, context) {
   if (event.httpMethod !== 'POST') {
