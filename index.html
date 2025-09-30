@@ -179,8 +179,10 @@
         // Cargar contador de entradas disponibles
         async function loadTicketCount() {
             try {
-                // Para Netlify functions
                 const response = await fetch('/.netlify/functions/ticket-count');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 document.getElementById('availableTickets').textContent = data.available;
                 
@@ -189,7 +191,6 @@
                 }
             } catch (error) {
                 console.log('Error cargando contador:', error);
-                // Fallback al valor por defecto
                 document.getElementById('availableTickets').textContent = CONFIG.MAX_TICKETS;
             }
         }
@@ -201,7 +202,7 @@
             btn.style.background = '#dc3545';
         }
 
-        // Crear nueva reserva
+        // Crear nueva reserva - VERSIÓN CORREGIDA
         async function createReservation() {
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim();
@@ -214,7 +215,6 @@
                 return;
             }
             
-            // Validar email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
                 showError('Por favor, introduce un email válido.');
@@ -222,10 +222,11 @@
             }
 
             const formData = {
+                operation: 'create-reservation', // ✅ AÑADIDO: parámetro operation
                 name: name,
                 email: email,
                 phone: phone,
-                ticketType: ticketType,
+                ticketType: ticketType, // ✅ CORREGIDO: camelCase
                 price: CONFIG.TICKET_PRICES[ticketType]
             };
 
@@ -233,8 +234,9 @@
                 showStep(2);
                 hideError();
                 
-                // Deshabilitar el botón para evitar múltiples envíos
                 document.getElementById('reserveBtn').disabled = true;
+
+                console.log('📤 Enviando datos de reserva:', formData);
 
                 const response = await fetch('/.netlify/functions/create-reservation', {
                     method: 'POST',
@@ -244,27 +246,39 @@
                     body: JSON.stringify(formData)
                 });
 
+                console.log('📨 Respuesta HTTP:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+
                 const result = await response.json();
-                
+                console.log('📊 Resultado completo:', result);
+
+                // ✅ VERIFICACIÓN MEJORADA: Comprobar si es la respuesta por defecto
+                if (result.message && result.message.includes('Sistema de reservas')) {
+                    throw new Error('La función create-reservation no está procesando la solicitud. Revisa los parámetros.');
+                }
+
                 if (result.success) {
                     currentReservation = result.reservation;
                     document.getElementById('creatingReservation').classList.add('hidden');
                     document.getElementById('bizumInstructions').classList.remove('hidden');
                     showBizumInstructions(result.reservation);
                     
-                    // Enviar email de confirmación
                     await sendConfirmationEmail(formData, result.reservation);
                     
                 } else {
-                    showError('Error al crear la reserva: ' + (result.error || 'Inténtalo de nuevo.'));
+                    const errorMsg = result.error || 'Error desconocido del servidor';
+                    console.error('❌ Error del servidor:', errorMsg);
+                    showError('Error al crear la reserva: ' + errorMsg);
                     showStep(1);
                 }
             } catch (error) {
-                console.error('Error:', error);
-                showError('Error al crear la reserva. Inténtalo de nuevo.');
+                console.error('🔥 Error en createReservation:', error);
+                showError('Error: ' + error.message + '. Inténtalo de nuevo.');
                 showStep(1);
             } finally {
-                // Rehabilitar el botón
                 document.getElementById('reserveBtn').disabled = false;
             }
         }
@@ -281,7 +295,7 @@
             document.getElementById('formError').style.display = 'none';
         }
 
-        // Función para enviar email de confirmación - CORREGIDA
+        // Función para enviar email de confirmación
         async function sendConfirmationEmail(formData, reservation) {
             try {
                 const templateParams = {
@@ -306,63 +320,35 @@
                 return result;
             } catch (error) {
                 console.error('❌ Error enviando email de confirmación:', error);
-                console.log('Detalles del error:', error);
                 return null;
             }
         }
 
-        // Función para enviar email de entrada activa - CORREGIDA
+        // Función para enviar email de entrada activa
         async function sendTicketEmail(reservation) {
-          try {
-            const templateParams = {
-              to_name: reservation.name,
-              to_email: reservation.email,
-              name: reservation.name,
-              reservation_id: reservation.id,
-              ticket_type: (reservation.ticketType || 'general').toUpperCase(),
-              ticket_url: window.location.href,
-              reply_to: reservation.email
-            };
-        
-            console.log('Enviando email de entrada activa con parámetros:', templateParams);
-        
-            const result = await emailjs.send(
-              CONFIG.EMAILJS.SERVICE_ID,
-              CONFIG.EMAILJS.TEMPLATE_ACTIVE,
-              templateParams
-            );
-            
-            console.log('✅ Email de entrada activa enviado a:', reservation.email);
-            return result;
-          } catch (error) {
-            console.error('❌ Error enviando email de entrada activa:', error);
-            return null;
-          }
-        }
-
-        // Función para probar EmailJS
-        async function testEmailJS() {
             try {
-                const testParams = {
-                    to_name: "Test User",
-                    to_email: "test@email.com",
-                    name: "Test User",
-                    reservation_id: "TEST123",
-                    amount: "10€",
-                    bizum_number: CONFIG.BIZUM_NUMBER,
-                    reply_to: "test@email.com"
+                const templateParams = {
+                    to_name: reservation.name,
+                    to_email: reservation.email,
+                    name: reservation.name,
+                    reservation_id: reservation.id,
+                    ticket_type: (reservation.ticketType || 'general').toUpperCase(),
+                    ticket_url: window.location.href,
+                    reply_to: reservation.email
                 };
-                
+
+                console.log('Enviando email de entrada activa con parámetros:', templateParams);
+
                 const result = await emailjs.send(
                     CONFIG.EMAILJS.SERVICE_ID,
-                    CONFIG.EMAILJS.TEMPLATE_CONFIRMATION,
-                    testParams
+                    CONFIG.EMAILJS.TEMPLATE_ACTIVE,
+                    templateParams
                 );
                 
-                console.log('✅ Test EmailJS exitoso:', result);
+                console.log('✅ Email de entrada activa enviado a:', reservation.email);
                 return result;
             } catch (error) {
-                console.error('❌ Error en test EmailJS:', error);
+                console.error('❌ Error enviando email de entrada activa:', error);
                 return null;
             }
         }
@@ -377,77 +363,72 @@
 
         // Verificar si el pago fue confirmado
         async function checkPaymentStatus() {
-          if (!currentReservation) {
-            alert('No hay reserva actual');
-            return;
-          }
-        
-          const reservationId = currentReservation.id;
-          console.log('🎯 Iniciando verificación para:', reservationId);
-          
-          try {
-            const checkBtn = document.getElementById('checkPaymentBtn');
-            checkBtn.disabled = true;
-            checkBtn.textContent = 'Verificando...';
-        
-            const url = `/.netlify/functions/check-reservation?id=${reservationId}`;
-            console.log('📡 URL de petición:', url);
-            
-            const response = await fetch(url);
-            const result = await response.json();
-            console.log('📊 Datos recibidos:', result);
-        
-            // ✅ CORRECCIÓN: Manejar tanto array como objeto
-            let reservationData = result.reservation;
-            
-            // Si es un array, tomar el primer elemento
-            if (Array.isArray(reservationData) && reservationData.length > 0) {
-              reservationData = reservationData[0];
-              console.log('🔍 Reservation es array, tomando primer elemento:', reservationData);
+            if (!currentReservation) {
+                alert('No hay reserva actual');
+                return;
             }
+
+            const reservationId = currentReservation.id;
+            console.log('🎯 Iniciando verificación para:', reservationId);
             
-            // Verificar si tenemos datos de reserva
-            if (result.success && reservationData) {
-              console.log('✅ Reserva encontrada. Estado:', reservationData.status);
-              
-              if (reservationData.status === 'active') {
-                console.log('🎉 ¡Reserva ACTIVA! Generando QR...');
+            try {
+                const checkBtn = document.getElementById('checkPaymentBtn');
+                checkBtn.disabled = true;
+                checkBtn.textContent = 'Verificando...';
+
+                const url = `/.netlify/functions/check-reservation?operation=check-reservation&id=${reservationId}`;
+                console.log('📡 URL de petición:', url);
                 
-                // ✅ CORRECCIÓN: Usar los datos actualizados del servidor
-                currentReservation = {
-                  id: reservationData.id,
-                  name: reservationData.name,
-                  email: reservationData.email,
-                  phone: reservationData.phone,
-                  ticketType: reservationData.ticketType,
-                  amount: reservationData.price || reservationData.amount,
-                  status: reservationData.status
-                };
+                const response = await fetch(url);
+                const result = await response.json();
+                console.log('📊 Datos recibidos:', result);
+
+                let reservationData = result.reservation;
                 
-                generateQRCode(currentReservation);
-                showStep(3);
+                if (Array.isArray(reservationData) && reservationData.length > 0) {
+                    reservationData = reservationData[0];
+                    console.log('🔍 Reservation es array, tomando primer elemento:', reservationData);
+                }
                 
-                // Enviar email de entrada activa
-                await sendTicketEmail(currentReservation);
-                console.log('📧 Email de entrada activa enviado');
-                
-              } else {
-                console.log('⏳ Estado actual:', reservationData.status);
-                alert(`El estado actual es: ${reservationData.status}\n\nRevisaremos tu Bizum manualmente y te avisaremos por email cuando active tu entrada.`);
-              }
-            } else {
-              console.log('❌ No se pudo obtener datos de la reserva');
-              alert('Error: No se pudo verificar el estado de tu reserva.');
+                if (result.success && reservationData) {
+                    console.log('✅ Reserva encontrada. Estado:', reservationData.status);
+                    
+                    if (reservationData.status === 'active') {
+                        console.log('🎉 ¡Reserva ACTIVA! Generando QR...');
+                        
+                        currentReservation = {
+                            id: reservationData.id,
+                            name: reservationData.name,
+                            email: reservationData.email,
+                            phone: reservationData.phone,
+                            ticketType: reservationData.ticketType,
+                            amount: reservationData.price || reservationData.amount,
+                            status: reservationData.status
+                        };
+                        
+                        generateQRCode(currentReservation);
+                        showStep(3);
+                        
+                        await sendTicketEmail(currentReservation);
+                        console.log('📧 Email de entrada activa enviado');
+                        
+                    } else {
+                        console.log('⏳ Estado actual:', reservationData.status);
+                        alert(`El estado actual es: ${reservationData.status}\n\nRevisaremos tu Bizum manualmente y te avisaremos por email cuando active tu entrada.`);
+                    }
+                } else {
+                    console.log('❌ No se pudo obtener datos de la reserva');
+                    alert('Error: No se pudo verificar el estado de tu reserva.');
+                }
+
+            } catch (error) {
+                console.error('🔥 Error en la verificación:', error);
+                alert('Error de conexión: ' + error.message);
+            } finally {
+                const checkBtn = document.getElementById('checkPaymentBtn');
+                checkBtn.disabled = false;
+                checkBtn.textContent = '🔍 Verificar Estado del Pago';
             }
-        
-          } catch (error) {
-            console.error('🔥 Error en la verificación:', error);
-            alert('Error de conexión: ' + error.message);
-          } finally {
-            const checkBtn = document.getElementById('checkPaymentBtn');
-            checkBtn.disabled = false;
-            checkBtn.textContent = '🔍 Verificar Estado del Pago';
-          }
         }
 
         // Generar código QR
@@ -492,7 +473,6 @@
             });
             document.getElementById('step' + stepNumber).classList.add('active');
             
-            // Scroll to top
             window.scrollTo(0, 0);
         }
 
@@ -503,8 +483,14 @@
             showStep(1);
         }
 
-        // Hacer la función testEmailJS global para poder probarla desde la consola
-        window.testEmailJS = testEmailJS;
+        // Función para probar manualmente
+        window.testReservation = function() {
+            // Rellena automáticamente el formulario para pruebas
+            document.getElementById('name').value = 'Usuario de Prueba';
+            document.getElementById('email').value = 'test@ejemplo.com';
+            document.getElementById('phone').value = '+34123456789';
+            createReservation();
+        };
     </script>
 </body>
 </html>
