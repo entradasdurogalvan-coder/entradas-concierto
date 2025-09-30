@@ -13,7 +13,7 @@
         .counter { background: #e3f2fd; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
         button { background: #2196F3; color: white; border: none; padding: 15px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; margin: 10px 0; }
         button:hover { background: #1976D2; }
         button:disabled { background: #ccc; cursor: not-allowed; }
@@ -27,6 +27,7 @@
         .status-active { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }
         .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #2196F3; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-message { color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 5px; margin: 10px 0; display: none; }
     </style>
 </head>
 <body>
@@ -43,6 +44,8 @@
                 <div id="availableTickets" style="font-size: 2.5em; font-weight: bold; color: #2196F3;">100</div>
                 <p>Total: 100 entradas</p>
             </div>
+            
+            <div id="formError" class="error-message"></div>
             
             <form id="reservationForm">
                 <div class="form-group">
@@ -84,9 +87,9 @@
                 
                 <div class="bizum-info">
                     <h3>Realiza el pago por Bizum</h3>
-                    <div style="font-size: 2em; font-weight: bold; color: #2196F3;" id="bizumAmount">25€</div>
+                    <div style="font-size: 2em; font-weight: bold; color: #2196F3;" id="bizumAmount">10€</div>
                     <p>Al número de teléfono:</p>
-                    <div style="font-size: 1.5em; font-weight: bold; color: #1976D2;" id="bizumNumber">+34 612 345 678</div>
+                    <div style="font-size: 1.5em; font-weight: bold; color: #1976D2;" id="bizumNumber">+34 646 98 52 89</div>
                     <p>Concepto: <strong id="bizumConcept" style="font-size: 1.1em;"></strong></p>
                 </div>
                 
@@ -104,7 +107,7 @@
                     <li>Puedes verificar el estado cuando quieras</li>
                 </ol>
                 
-                <button onclick="checkPaymentStatus()">🔍 Verificar Estado del Pago</button>
+                <button id="checkPaymentBtn">🔍 Verificar Estado del Pago</button>
                 <button onclick="showStep(1)" style="background: #6c757d;">← Volver atrás</button>
             </div>
         </div>
@@ -125,25 +128,25 @@
                 <p><strong>📧 Se ha enviado un email con esta información a tu correo</strong></p>
             </div>
             
-            <button onclick="saveTicket()">📥 Guardar Entrada como Imagen</button>
+            <button id="saveTicketBtn">📥 Guardar Entrada como Imagen</button>
             <button onclick="window.print()" style="background: #6c757d;">🖨️ Imprimir Entrada</button>
-            <button onclick="showStep(1)" style="background: #28a745;">➕ Hacer otra reserva</button>
+            <button onclick="resetFormAndShowStep1()" style="background: #28a745;">➕ Hacer otra reserva</button>
         </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN - ¡CAMBIAR ESTOS DATOS!
+        // CONFIGURACIÓN
         const CONFIG = {
             MAX_TICKETS: 100,
-            BIZUM_NUMBER: '+34 646 98 52 89',  // ← TU NÚMERO DE BIZUM
+            BIZUM_NUMBER: '+34 646 98 52 89',
             TICKET_PRICES: {
                 general: 10
             },
             EMAILJS: {
-                PUBLIC_KEY: 'GfdkisBU7SIwEIk0d',        // ← TU PUBLIC KEY de EmailJS
-                SERVICE_ID: 'service_iwvax43',        // ← TU SERVICE ID de EmailJS
-                TEMPLATE_CONFIRMATION: 'template_ha4c27w', // ← Template ID confirmación
-                TEMPLATE_ACTIVE: 'template_k2wp5jl' // ← Template ID entrada activa
+                PUBLIC_KEY: 'GfdkisBU7SIwEIk0d',
+                SERVICE_ID: 'service_iwvax43',
+                TEMPLATE_CONFIRMATION: 'template_ha4c27w',
+                TEMPLATE_ACTIVE: 'template_k2wp5jl'
             }
         };
 
@@ -158,17 +161,25 @@
                 e.preventDefault();
                 createReservation();
             });
+            
+            document.getElementById('checkPaymentBtn').addEventListener('click', checkPaymentStatus);
+            document.getElementById('saveTicketBtn').addEventListener('click', saveTicket);
         });
 
         // Inicializar EmailJS
         function initializeEmailJS() {
-            emailjs.init(CONFIG.EMAILJS.PUBLIC_KEY);
-            console.log("✅ EmailJS inicializado correctamente");
+            if (typeof emailjs !== 'undefined') {
+                emailjs.init(CONFIG.EMAILJS.PUBLIC_KEY);
+                console.log("✅ EmailJS inicializado correctamente");
+            } else {
+                console.error("❌ EmailJS no se cargó correctamente");
+            }
         }
 
         // Cargar contador de entradas disponibles
         async function loadTicketCount() {
             try {
+                // Para Netlify functions
                 const response = await fetch('/.netlify/functions/ticket-count');
                 const data = await response.json();
                 document.getElementById('availableTickets').textContent = data.available;
@@ -178,6 +189,8 @@
                 }
             } catch (error) {
                 console.log('Error cargando contador:', error);
+                // Fallback al valor por defecto
+                document.getElementById('availableTickets').textContent = CONFIG.MAX_TICKETS;
             }
         }
 
@@ -190,17 +203,39 @@
 
         // Crear nueva reserva
         async function createReservation() {
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const ticketType = document.getElementById('ticketType').value;
+            
+            // Validación básica
+            if (!name || !email || !phone) {
+                showError('Por favor, completa todos los campos obligatorios.');
+                return;
+            }
+            
+            // Validar email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showError('Por favor, introduce un email válido.');
+                return;
+            }
+
             const formData = {
-                name: document.getElementById('name').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                ticketType: document.getElementById('ticketType').value,
-                price: CONFIG.TICKET_PRICES[document.getElementById('ticketType').value]
+                name: name,
+                email: email,
+                phone: phone,
+                ticketType: ticketType,
+                price: CONFIG.TICKET_PRICES[ticketType]
             };
 
             try {
                 showStep(2);
+                hideError();
                 
+                // Deshabilitar el botón para evitar múltiples envíos
+                document.getElementById('reserveBtn').disabled = true;
+
                 const response = await fetch('/.netlify/functions/create-reservation', {
                     method: 'POST',
                     headers: {
@@ -217,25 +252,41 @@
                     document.getElementById('bizumInstructions').classList.remove('hidden');
                     showBizumInstructions(result.reservation);
                     
-                    // ✅ ENVIAR EMAIL DE CONFIRMACIÓN
+                    // Enviar email de confirmación
                     await sendConfirmationEmail(formData, result.reservation);
                     
                 } else {
-                    alert('Error: ' + result.error);
+                    showError('Error al crear la reserva: ' + (result.error || 'Inténtalo de nuevo.'));
                     showStep(1);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al crear la reserva. Inténtalo de nuevo.');
+                showError('Error al crear la reserva. Inténtalo de nuevo.');
                 showStep(1);
+            } finally {
+                // Rehabilitar el botón
+                document.getElementById('reserveBtn').disabled = false;
             }
+        }
+
+        // Función para mostrar errores
+        function showError(message) {
+            const errorElement = document.getElementById('formError');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        // Función para ocultar errores
+        function hideError() {
+            document.getElementById('formError').style.display = 'none';
         }
 
         // Función para enviar email de confirmación
         async function sendConfirmationEmail(formData, reservation) {
             try {
                 const templateParams = {
-                    name: formData.name,
+                    to_name: formData.name,
+                    to_email: formData.email,
                     reservation_id: reservation.id,
                     amount: reservation.amount + '€',
                     bizum_number: CONFIG.BIZUM_NUMBER
@@ -251,7 +302,6 @@
                 return result;
             } catch (error) {
                 console.error('❌ Error enviando email de confirmación:', error);
-                // No mostramos alerta para no interrumpir la experiencia del usuario
                 return null;
             }
         }
@@ -260,7 +310,8 @@
         async function sendTicketEmail(reservation) {
             try {
                 const templateParams = {
-                    name: reservation.name,
+                    to_name: reservation.name,
+                    to_email: reservation.email,
                     reservation_id: reservation.id,
                     ticket_type: reservation.ticketType.toUpperCase(),
                     ticket_url: window.location.href
@@ -293,6 +344,10 @@
             if (!currentReservation) return;
             
             try {
+                const checkBtn = document.getElementById('checkPaymentBtn');
+                checkBtn.disabled = true;
+                checkBtn.textContent = 'Verificando...';
+                
                 const response = await fetch('/.netlify/functions/check-reservation?id=' + currentReservation.id);
                 const result = await response.json();
                 
@@ -300,7 +355,7 @@
                     generateQRCode(currentReservation);
                     showStep(3);
                     
-                    // ✅ ENVIAR EMAIL DE ENTRADA ACTIVA
+                    // Enviar email de entrada activa
                     await sendTicketEmail(currentReservation);
                     
                 } else {
@@ -308,6 +363,10 @@
                 }
             } catch (error) {
                 alert('Error al verificar el estado. Inténtalo más tarde.');
+            } finally {
+                const checkBtn = document.getElementById('checkPaymentBtn');
+                checkBtn.disabled = false;
+                checkBtn.textContent = '🔍 Verificar Estado del Pago';
             }
         }
 
@@ -316,7 +375,7 @@
             const qrData = JSON.stringify({
                 id: reservation.id,
                 name: reservation.name,
-                event: "Concierto Exclusivo",
+                event: "Concierto Duro Galván",
                 type: reservation.ticketType,
                 valid: true,
                 timestamp: new Date().getTime()
@@ -355,6 +414,13 @@
             
             // Scroll to top
             window.scrollTo(0, 0);
+        }
+
+        // Resetear formulario y volver al paso 1
+        function resetFormAndShowStep1() {
+            document.getElementById('reservationForm').reset();
+            hideError();
+            showStep(1);
         }
     </script>
 </body>
