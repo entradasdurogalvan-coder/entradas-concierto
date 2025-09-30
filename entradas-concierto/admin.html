@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Panel Control - Entradas</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .reserva { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .pendiente { background: #fff3cd; }
+        .activa { background: #d4edda; }
+        button { margin: 5px; padding: 8px 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Panel de Control - Entradas</h1>
+    <p>Contraseña: <input type="password" id="password">
+    <button onclick="login()">Entrar</button></p>
+    
+    <div id="panel" style="display:none;">
+        <h2>Reservas Pendientes</h2>
+        <div id="reservas"></div>
+    </div>
+
+    <script>
+        const CONTRASENA = "admin123";  // Cambia esta contraseña
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID/exec"; // Mismo que arriba
+        
+        function login() {
+            if (document.getElementById('password').value === CONTRASENA) {
+                document.getElementById('panel').style.display = 'block';
+                cargarReservas();
+            } else {
+                alert('Contraseña incorrecta');
+            }
+        }
+        
+        async function cargarReservas() {
+            try {
+                // Obtener todas las reservas (necesitarías modificar el Google Script)
+                const response = await fetch(GOOGLE_SCRIPT_URL + '?action=getAll');
+                const reservas = await response.json();
+                
+                let html = '';
+                reservas.forEach(reserva => {
+                    html += `
+                    <div class="reserva ${reserva.status === 'pending' ? 'pendiente' : 'activa'}">
+                        <strong>${reserva.id}</strong><br>
+                        Nombre: ${reserva.name}<br>
+                        Email: ${reserva.email}<br>
+                        Estado: ${reserva.status}<br>
+                        ${reserva.status === 'pending' ? 
+                          `<button onclick="activarReserva('${reserva.id}')">✅ Activar Entrada</button>` : 
+                          '✅ ACTIVADA'}
+                    </div>`;
+                });
+                
+                document.getElementById('reservas').innerHTML = html;
+            } catch (error) {
+                document.getElementById('reservas').innerHTML = 
+                    '<p>Para activar entradas manualmente:</p>' +
+                    '<ol>' +
+                    '<li>Ve a tu Google Sheets "Entradas Concierto"</li>' +
+                    '<li>Busca la reserva por el código</li>' +
+                    '<li>Cambia "pending" por "active" en la columna Estado</li>' +
+                    '</ol>';
+            }
+        }
+        
+        async function activarReserva(id) {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL + '?action=activate', {
+                    method: 'POST',
+                    body: JSON.stringify({id: id})
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('Entrada activada: ' + id);
+                    cargarReservas();
+                }
+            } catch (error) {
+                alert('Error activando entrada');
+            }
+        }
+    </script>
+</body>
+</html>
