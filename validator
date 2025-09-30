@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador de Entradas - Concierto</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2196F3;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .scanner-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            border: 3px solid #2196F3;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .manual-input {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        
+        .manual-input input {
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 300px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .manual-input button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        
+        .manual-input button:hover {
+            background: #1976D2;
+        }
+        
+        .result {
+            margin: 25px 0;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+        
+        .valid {
+            background: #d4edda;
+            border: 3px solid #28a745;
+            color: #155724;
+        }
+        
+        .invalid {
+            background: #f8d7da;
+            border: 3px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .error {
+            background: #fff3cd;
+            border: 3px solid #ffc107;
+            color: #856404;
+        }
+        
+        .result h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        
+        .result .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .ticket-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        
+        .ticket-info p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .btn-primary {
+            background: #2196F3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            #reader {
+                max-width: 100%;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Validador de Entradas</h1>
+            <p>Concierto Exclusivo - Acceso al evento</p>
+        </div>
+        
+        <div class="content">
+            <!-- Estadísticas -->
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalScanned">0</div>
+                    <div>Total Escaneadas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="validCount">0</div>
+                    <div>Válidas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="invalidCount">0</div>
+                    <div>Inválidas</div>
+                </div>
+            </div>
+            
+            <!-- Escáner QR -->
+            <div class="scanner-section">
+                <h2>Escanear Código QR</h2>
+                <p>Enfoca la cámara hacia el código QR de la entrada</p>
+                
+                <div id="reader"></div>
+                
+                <div class="controls">
+                    <button id="startScanner" class="btn btn-primary">▶️ Iniciar Escáner</button>
+                    <button id="stopScanner" class="btn btn-danger" style="display: none;">⏹️ Detener Escáner</button>
+                    <button id="switchCamera" class="btn">🔄 Cambiar Cámara</button>
+                </div>
+            </div>
+            
+            <!-- Entrada Manual -->
+            <div class="manual-input">
+                <h3>🔢 Validación Manual</h3>
+                <p>Introduce el código de la entrada manualmente:</p>
+                <input type="text" id="manualCode" placeholder="Ej: ENT-123456789" maxlength="20">
+                <div>
+                    <button onclick="validateManualCode()" class="btn btn-primary">✅ Validar Entrada</button>
+                    <button onclick="clearAll()" class="btn">🗑️ Limpiar</button>
+                </div>
+            </div>
+            
+            <!-- Resultados -->
+            <div id="result" class="result">
+                <!-- Se llena dinámicamente -->
+            </div>
+            
+            <!-- Historial (opcional para el organizador) -->
+            <div class="manual-input">
+                <h3>📊 Panel de Control</h3>
+                <button onclick="showAdminPanel()" class="btn btn-primary">👨‍💼 Acceso Administrador</button>
+                <button onclick="resetStats()" class="btn btn-danger">🔄 Reiniciar Estadísticas</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const CONFIG = {
+            GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/TU_SCRIPT_ID/exec' // ← MISMO QUE EN INDEX.HTML
+        };
+
+        // Variables globales
+        let html5QrCode;
+        let currentCameraId = null;
+        let stats = {
+            totalScanned: 0,
+            validCount: 0,
+            invalidCount: 0
+        };
+
+        // Cuando la página carga
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            initializeScanner();
+            
+            // Permitir Enter en input manual
+            document.getElementById('manualCode').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    validateManualCode();
+                }
+            });
+        });
+
+        // Inicializar el escáner (pero no iniciarlo aún)
+        function initializeScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            
+            // Obtener cámaras disponibles
+            Html5Qrcode.getCameras().then(cameras => {
+                if (cameras && cameras.length > 0) {
+                    currentCameraId = cameras[0].id;
+                    console.log(`✅ ${cameras.length} cámaras detectadas`);
+                } else {
+                    console.error("❌ No se encontraron cámaras");
+                    showError("No se detectó ninguna cámara. Usa la validación manual.");
+                }
+            }).catch(err => {
+                console.error("❌ Error al obtener cámaras:", err);
+                showError("Error al acceder a la cámara. Usa la validación manual.");
+            });
+        }
+
+        // Iniciar el escáner
+        async function startScanner() {
+            if (!currentCameraId) {
+                showError("No hay cámara disponible");
+                return;
+            }
+
+            try {
+                await html5QrCode.start(
+                    currentCameraId,
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                        aspectRatio: 1.0
+                    },
+                    onScanSuccess,
+                    onScanFailure
+                );
+                
+                document.getElementById('startScanner').style.display = 'none';
+                document.getElementById('stopScanner').style.display = 'inline-block';
+                console.log("✅ Escáner iniciado");
+                
+            } catch (err) {
+                console.error("❌ Error al iniciar escáner:", err);
+                showError("Error al iniciar la cámara: " + err.message);
+            }
+        }
+
+        // Detener el escáner
+        function stopScanner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('startScanner').style.display = 'inline-block';
+                    document.getElementById('stopScanner').style.display = 'none';
+                    console.log("✅ Escáner detenido");
+                }).catch(err => {
+                    console.error("❌ Error al detener escáner:", err);
+                });
+            }
+        }
+
+        // Cambiar de cámara
+        async function switchCamera() {
+            if (!html5QrCode) return;
+            
+            try {
+                const cameras = await Html5Qrcode.getCameras();
+                if (cameras.length < 2) {
+                    showError("Solo hay una cámara disponible");
+                    return;
+                }
+                
+                // Encontrar la siguiente cámara
+                const currentIndex = cameras.findIndex(cam => cam.id === currentCameraId);
+                const nextIndex = (currentIndex + 1) % cameras.length;
+                const nextCameraId = cameras[nextIndex].id;
+                
+                // Detener escáner actual
+                if (html5QrCode.isScanning) {
+                    await html5QrCode.stop();
+                }
+                
+                // Iniciar con nueva cámara
+                currentCameraId = nextCameraId;
+                await startScanner();
+                
+                console.log(`✅ Cambiado a cámara: ${cameras[nextIndex].label}`);
+                
+            } catch (err) {
+                console.error("❌ Error al cambiar cámara:", err);
+                showError("Error al cambiar de cámara");
+            }
+        }
+
+        // Cuando se escanea un QR exitosamente
+        async function onScanSuccess(decodedText, decodedResult) {
+            console.log("📷 QR escaneado:", decodedText);
+            
+            // Detener temporalmente el escáner para procesar
+            if (html5QrCode && html5QrCode.isScanning) {
+                await html5QrCode.pause();
+            }
+            
+            try {
+                // Intentar parsear como JSON (si es QR generado por nosotros)
+                const qrData = JSON.parse(decodedText);
+                await validateEntry(qrData.id, qrData);
+                
+            } catch (e) {
+                // Si no es JSON, tratar como código directo
+                await validateEntry(decodedText);
+            }
+            
+            // Reanudar escáner después de 2 segundos
+            setTimeout(async () => {
+                if (html5QrCode) {
+                    await html5QrCode.resume();
+                }
+            }, 2000);
+        }
+
+        // Cuando falla el escaneo
+        function onScanFailure(error) {
+            // Error silencioso - se espera que falle frecuentemente hasta que se escanee un QR válido
+        }
+
+        // Validar código manualmente
+        async function validateManualCode() {
+            const manualCode = document.getElementById('manualCode').value.trim();
+            
+            if (!manualCode) {
+                showError("Por favor, introduce un código");
+                return;
+            }
+            
+            if (!manualCode.startsWith('ENT-')) {
+                showError("El código debe comenzar con ENT-");
+                return;
+            }
+            
+            await validateEntry(manualCode);
+        }
+
+        // Validar una entrada (común para QR y manual)
+        async function validateEntry(entryId, qrData = null) {
+            showLoading("Validando entrada...");
+            
+            try {
+                // Actualizar estadísticas
+                stats.totalScanned++;
+                updateStatsDisplay();
+                
+                // Verificar con Google Sheets
+                const response = await fetch(`/.netlify/functions/check-reservation?id=${entryId}`);
+                const result = await response.json();
+                
+                if (result.success && result.reservation) {
+                    const reservation = result.reservation;
+                    
+                    if (reservation.status === 'active') {
+                        // ENTRADA VÁLIDA
+                        stats.validCount++;
+                        showValidResult(reservation, qrData);
+                        console.log(`✅ Entrada VÁLIDA: ${entryId}`);
+                    } else {
+                        // ENTRADA NO ACTIVADA
+                        stats.invalidCount++;
+                        showInvalidResult(`Entrada no activada. Estado: ${reservation.status}`, reservation);
+                        console.log(`❌ Entrada NO ACTIVADA: ${entryId}`);
+                    }
+                } else {
+                    // ENTRADA NO ENCONTRADA
+                    stats.invalidCount++;
+                    showInvalidResult("Entrada no encontrada en el sistema", null);
+                    console.log(`❌ Entrada NO ENCONTRADA: ${entryId}`);
+                }
+                
+                updateStatsDisplay();
+                saveStats();
+                
+            } catch (error) {
+                console.error("❌ Error validando entrada:", error);
+                showError("Error de conexión. Intenta nuevamente.");
+            }
+        }
+
+        // Mostrar resultado VÁLIDO
+        function showValidResult(reservation, qrData) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result valid';
+            resultDiv.style.display = 'block';
+            
+            let additionalInfo = '';
+            if (qrData && qrData.name) {
+                additionalInfo = `<p><strong>Nombre en QR:</strong> ${qrData.name}</p>`;
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="icon">✅</div>
+                <h2>ENTRADA VÁLIDA</h2>
+                <p>Acceso permitido al evento</p>
+                
+                <div class="ticket-info">
+                    <p><strong>ID Entrada:</strong> ${reservation.id}</p>
+                    <p><strong>Nombre:</strong> ${reservation.name}</p>
+                    <p><strong>Email:</strong> ${reservation.email}</p>
+                    <p><strong>Tipo:</strong> ${reservation.ticketType.toUpperCase()}</p>
+                    <p><strong>Estado:</strong> ${reservation.status}</p>
+                    ${additionalInfo}
+                </div>
+                
+                <button onclick="closeResult()" class="btn btn-success">✔️ Continuar Escaneando</button>
+            `;
+            
+            // Sonido de éxito (opcional)
+            playBeep(800, 200);
+        }
+
+        // Mostrar resultado INVÁLIDO
+        function showInvalidResult(message, reservation) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result invalid';
+            resultDiv.style.display = 'block';
+            
+            let reservationInfo = '';
+            if (reservation) {
+                reservationInfo = `
+                    <div class="ticket-info">
+                        <p><strong>ID:</strong> ${reservation.id}</p>
+                        <p><strong>Nombre:</strong> ${reservation.name}</p>
+                        <p><strong>Estado:</strong> ${reservation.status}</p>
+                    </div>
+                `;
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="icon">❌</div>
+                <h2>ENTRADA INVÁLIDA</h2>
+                <p>${message}</p>
+                ${reservationInfo}
+                <button onclick="closeResult()" class="btn btn-danger">❌ Continuar Escaneando</button>
+            `;
+            
+            // Sonido de error (opcional)
+            playBeep(300, 500);
+        }
+
+        // Mostrar ERROR
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result error';
+            resultDiv.style.display = 'block';
+            
+            resultDiv.innerHTML = `
+                <div class="icon">⚠️</div>
+                <h2>ERROR</h2>
+                <p>${message}</p>
+                <button onclick="closeResult()" class="btn">OK</button>
+            `;
+        }
+
+        // Mostrar carga
+        function showLoading(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result';
+            resultDiv.style.display = 'block';
+            
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Cerrar resultado
+        function closeResult() {
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('manualCode').value = '';
+        }
+
+        // Limpiar todo
+        function clearAll() {
+            document.getElementById('manualCode').value = '';
+            closeResult();
+        }
+
+        // Estadísticas
+        function updateStatsDisplay() {
+            document.getElementById('totalScanned').textContent = stats.totalScanned;
+            document.getElementById('validCount').textContent = stats.validCount;
+            document.getElementById('invalidCount').textContent = stats.invalidCount;
+        }
+
+        function loadStats() {
+            const savedStats = localStorage.getItem('validatorStats');
+            if (savedStats) {
+                stats = JSON.parse(savedStats);
+                updateStatsDisplay();
+            }
+        }
+
+        function saveStats() {
+            localStorage.setItem('validatorStats', JSON.stringify(stats));
+        }
+
+        function resetStats() {
+            if (confirm('¿Estás seguro de que quieres reiniciar las estadísticas?')) {
+                stats = {
+                    totalScanned: 0,
+                    validCount: 0,
+                    invalidCount: 0
+                };
+                updateStatsDisplay();
+                saveStats();
+                showError("Estadísticas reiniciadas");
+            }
+        }
+
+        // Panel de administrador
+        function showAdminPanel() {
+            const password = prompt("Contraseña de administrador:");
+            if (password === "admin123") { // Cambia esta contraseña
+                window.open('admin.html', '_blank');
+            } else {
+                showError("Contraseña incorrecta");
+            }
+        }
+
+        // Sonido de feedback (opcional)
+        function playBeep(frequency, duration) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration / 1000);
+            } catch (e) {
+                console.log("Audio no soportado");
+            }
+        }
+
+        // Event listeners para los botones
+        document.getElementById('startScanner').addEventListener('click', startScanner);
+        document.getElementById('stopScanner').addEventListener('click', stopScanner);
+        document.getElementById('switchCamera').addEventListener('click', switchCamera);
+
+        // Detener escáner cuando se cierra la página
+        window.addEventListener('beforeunload', function() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop();
+            }
+        });
+    </script>
+</body>
+</html>
