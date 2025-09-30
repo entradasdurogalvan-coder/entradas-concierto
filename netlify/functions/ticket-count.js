@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwVsEuzPq-efkDmmEWo9rUtrsGylUNzkETLlaczHw2O0LrflSQrGj8DF7rQrj5dUw1e/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWZq0ELdYfxUscRScLefeN9PapFIikAyy9v1ZPlZp47Oa_v0onq9Bb8IZTvZMdYJjK/exec';
 
 exports.handler = async function(event, context) {
   // Headers para CORS
